@@ -26,7 +26,9 @@ def stat_test(
     **stats_params
 ):
     """Get formatted result of two sample statistical test.
-
+    EDIT 16.11.2020 - Veronika Brumovska
+    - implementing ANOVA (line 84)
+    
     Arguments
     ---------
     bbox_data1, bbox_data2
@@ -48,11 +50,9 @@ def stat_test(
         Number of comparisons to use for multiple comparisons correction.
     stats_params
         Additional keyword arguments to pass to scipy stats functions.
-
     Returns
     -------
     StatResult object with formatted result of test.
-
     """
     # Check arguments.
     assert_is_in(
@@ -74,6 +74,17 @@ def stat_test(
         result = StatResult(
             'Mann-Whitney-Wilcoxon test two-sided',
             'M.W.W.',
+            'U_stat',
+            u_stat,
+            pval,
+        )
+    elif test == 'anova':
+        u_stat, pval = stats.f_oneway(
+            box_data1, box_data2, **stats_params
+        )
+        result = StatResult(
+            'anova',
+            'anova',
             'U_stat',
             u_stat,
             pval,
@@ -156,10 +167,8 @@ def stat_test(
 
 def bonferroni(p_values, num_comparisons='auto'):
     """Apply Bonferroni correction for multiple comparisons.
-
     The Bonferroni correction is defined as
         p_corrected = min(num_comparisons * p, 1.0).
-
     Arguments
     ---------
     p_values: scalar or list-like
@@ -167,11 +176,9 @@ def bonferroni(p_values, num_comparisons='auto'):
     num_comparisons: int or `auto`
         Number of comparisons. Use `auto` to infer the number of comparisons
         from the length of the `p_values` list.
-
     Returns
     -------
     Scalar or numpy array of corrected p-values.
-
     """
     # Input checks.
     if np.ndim(p_values) > 1:
@@ -282,13 +289,11 @@ def add_stat_annotation(ax, plot='boxplot',
     Optionally computes statistical test between pairs of data series, and add statistical annotation on top
     of the boxes/bars. The same exact arguments `data`, `x`, `y`, `hue`, `order`, `width`,
     `hue_order` (and `units`) as in the seaborn boxplot/barplot function must be passed to this function.
-
     This function works in one of the two following modes:
     a) `perform_stat_test` is True: statistical test as given by argument `test` is performed.
     b) `perform_stat_test` is False: no statistical test is performed, list of custom p-values `pvalues` are
        used for each pair of boxes. The `test_short_name` argument is then used as the name of the
        custom statistical test.
-
     :param plot: type of the plot, one of 'boxplot' or 'barplot'.
     :param line_height: in axes fraction coordinates
     :param text_offset: in points
@@ -319,7 +324,6 @@ def add_stat_annotation(ax, plot='boxplot',
     def get_box_data(box_plotter, boxName):
         """
         boxName can be either a name "cat" or a tuple ("cat", "hue")
-
         Here we really have to duplicate seaborn code, because there is not
         direct access to the box_data in the BoxPlotter class.
         """
@@ -365,7 +369,7 @@ def add_stat_annotation(ax, plot='boxplot',
                              "or `test_short_name` must be `None`.")
         valid_list = ['t-test_ind', 't-test_welch', 't-test_paired',
                       'Mann-Whitney', 'Mann-Whitney-gt', 'Mann-Whitney-ls',
-                      'Levene', 'Wilcoxon', 'Kruskal']
+                      'Levene', 'Wilcoxon', 'Kruskal', "anova"]
         if test not in valid_list:
             raise ValueError("test value should be one of the following: {}."
                              .format(', '.join(valid_list)))
